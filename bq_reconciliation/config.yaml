@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────
+# BigQuery Reconciliation Tool — Default Configuration
+# All values can be overridden via CLI flags in reconcile.py
+# ─────────────────────────────────────────────────────────────
+
+# BigQuery connection
+bigquery:
+  project: ""          # GCP project ID (required — override with --project)
+  source_table: ""     # Fully-qualified source table, e.g. my_project.my_dataset.my_table
+                       # Must contain dgw_src_batch_id and the source metric columns
+
+# Dimensions used to group rows for comparison.
+# These must exist in BOTH the XLSX and the source BigQuery table.
+dimensions:
+  - report_date
+  - offer_category_name
+  - masthead
+  - dw_billing_system_code
+  - frontbook_backbook_group_name
+
+# Metrics to compare.
+# Each entry maps an XLSX column name → how to compute it in BigQuery.
+# Supported aggregation expressions: COUNT(*), SUM(col), COUNT(DISTINCT col)
+metrics:
+  subscription_count:
+    bq_expr: "COUNT(*)"        # <-- UPDATE to match your source table logic
+  acquisition_count:
+    bq_expr: "SUM(acquisition_count)"   # <-- UPDATE
+  cancellation_count:
+    bq_expr: "SUM(cancellation_count)"  # <-- UPDATE
+  TotalAcquisition:
+    bq_expr: "SUM(TotalAcquisition)"    # <-- UPDATE
+  NetAcquisition:
+    bq_expr: "SUM(NetAcquisition)"      # <-- UPDATE
+  NetCancellation:
+    bq_expr: "SUM(NetCancellation)"     # <-- UPDATE
+
+# Tolerance for numeric comparison.
+# A mismatch is flagged when |xlsx_value - bq_value| > absolute_tolerance
+# AND |xlsx_value - bq_value| / max(|bq_value|, 1) > relative_tolerance
+tolerance:
+  absolute: 0.01        # 0.01 means differences ≤ 0.01 are ignored
+  relative: 0.0001      # 0.01% relative tolerance

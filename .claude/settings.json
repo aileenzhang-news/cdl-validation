@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 << 'EOF'\nimport pandas as pd\n\nfiles = {\n    'calendar': 'source_calendar.csv',\n    'subscription_base': 'source_subscription_base.csv', \n    'subscription_movement': 'source_subscription_movement_partial.csv',\n    'schemas': 'source_schemas.csv'\n}\n\nprint\\(\"=\" * 80\\)\nprint\\(\"EXPORTED SOURCE DATA SUMMARY\"\\)\nprint\\(\"=\" * 80\\)\n\nfor name, file in files.items\\(\\):\n    try:\n        df = pd.read_csv\\(file\\)\n        print\\(f\"\\\\n✓ {name}\"\\)\n        print\\(f\"  File: {file}\"\\)\n        print\\(f\"  Rows: {len\\(df\\):,}\"\\)\n        print\\(f\"  Columns: {len\\(df.columns\\)}\"\\)\n        if 'report_date' in df.columns:\n            df['report_date'] = pd.to_datetime\\(df['report_date']\\)\n            print\\(f\"  Date range: {df['report_date'].min\\(\\).date\\(\\)} to {df['report_date'].max\\(\\).date\\(\\)}\"\\)\n    except Exception as e:\n        print\\(f\"\\\\n✗ {name}: {e}\"\\)\n\nEOF)"
+    ]
+  }
+}
