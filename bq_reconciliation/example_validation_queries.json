@@ -1,0 +1,42 @@
+[
+  {
+    "name": "total_subscription_count",
+    "sql": "SELECT SUM(subscription_count) as total FROM `{table}`"
+  },
+  {
+    "name": "total_acquisition_count",
+    "sql": "SELECT SUM(acquisition_count) as total FROM `{table}`"
+  },
+  {
+    "name": "total_cancellation_count",
+    "sql": "SELECT SUM(cancellation_count) as total FROM `{table}`"
+  },
+  {
+    "name": "subscription_by_masthead",
+    "sql": "SELECT masthead, SUM(subscription_count) as total_subscriptions FROM `{table}` GROUP BY masthead ORDER BY masthead"
+  },
+  {
+    "name": "subscription_by_date",
+    "sql": "SELECT report_date, SUM(subscription_count) as total_subscriptions FROM `{table}` GROUP BY report_date ORDER BY report_date"
+  },
+  {
+    "name": "acquisition_by_classification",
+    "sql": "SELECT classification_level_1, SUM(acquisition_count) as total_acquisitions FROM `{table}` GROUP BY classification_level_1 ORDER BY classification_level_1"
+  },
+  {
+    "name": "subscription_by_delivery_medium",
+    "sql": "SELECT delivery_medium_type, SUM(subscription_count) as total_subscriptions FROM `{table}` GROUP BY delivery_medium_type ORDER BY delivery_medium_type"
+  },
+  {
+    "name": "average_subscription_by_offer_category",
+    "sql": "SELECT offer_category_name, AVG(subscription_count) as avg_subscriptions FROM `{table}` GROUP BY offer_category_name ORDER BY offer_category_name"
+  },
+  {
+    "name": "total_rows_by_date_range",
+    "sql": "SELECT DATE_TRUNC(report_date, MONTH) as month, COUNT(*) as row_count FROM `{table}` GROUP BY month ORDER BY month"
+  },
+  {
+    "name": "subscription_movement_by_source_system",
+    "sql": "SELECT dw_source_system_code, SUM(subscription_count) as total, SUM(acquisition_count) as acquisitions, SUM(cancellation_count) as cancellations FROM `{table}` GROUP BY dw_source_system_code ORDER BY dw_source_system_code"
+  }
+]

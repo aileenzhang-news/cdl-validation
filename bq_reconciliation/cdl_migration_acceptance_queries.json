@@ -1,0 +1,32 @@
+[
+  {
+    "name": "total_subscription_count",
+    "description": "Total subscription count across all dimensions",
+    "sql": "SELECT SUM(subscription_count) as total_subscriptions FROM `{table}`",
+    "critical": true
+  },
+  {
+    "name": "total_acquisition_cancellation",
+    "description": "Total acquisition and cancellation counts",
+    "sql": "SELECT SUM(acquisition_count) as total_acquisitions, SUM(cancellation_count) as total_cancellations FROM `{table}`",
+    "critical": true
+  },
+  {
+    "name": "subscription_by_date",
+    "description": "Subscription count by report date",
+    "sql": "SELECT report_date, SUM(subscription_count) as total FROM `{table}` GROUP BY report_date ORDER BY report_date",
+    "critical": true
+  },
+  {
+    "name": "subscription_by_masthead",
+    "description": "Subscription count by masthead (publication)",
+    "sql": "SELECT masthead, SUM(subscription_count) as total FROM `{table}` GROUP BY masthead ORDER BY masthead",
+    "critical": true
+  },
+  {
+    "name": "row_count_and_date_range",
+    "description": "Total row count and date range coverage",
+    "sql": "SELECT COUNT(*) as row_count, MIN(report_date) as min_date, MAX(report_date) as max_date, COUNT(DISTINCT report_date) as distinct_dates FROM `{table}`",
+    "critical": true
+  }
+]
