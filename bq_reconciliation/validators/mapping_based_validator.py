@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Mapping-Based Validator
-根据mapping.xlsx中的转换逻辑验证CDL数据
+Validates CDL data based on transformation logic in mapping.xlsx
 """
 
 import pandas as pd
@@ -14,7 +14,7 @@ from google.cloud import bigquery
 
 @dataclass
 class ValidationResult:
-    """单个验证的结果"""
+    """Single validation result"""
     column_name: str
     cte_name: str
     transformation_type: str
@@ -27,7 +27,7 @@ class ValidationResult:
 
 
 class MappingBasedValidator:
-    """基于mapping.xlsx的验证器"""
+    """Validator based on mapping.xlsx"""
 
     def __init__(
         self,
@@ -36,22 +36,22 @@ class MappingBasedValidator:
         tolerance: Dict[str, float] = None
     ):
         """
-        初始化验证器
+        Initialize validator
 
         Args:
-            mapping_file: mapping.xlsx路径
-            bq_client: BigQuery客户端
-            tolerance: 容差配置 {"absolute": 0.01, "relative": 0.0001}
+            mapping_file: Path to mapping.xlsx
+            bq_client: BigQuery client
+            tolerance: Tolerance configuration {"absolute": 0.01, "relative": 0.0001}
         """
         self.mapping_file = mapping_file
         self.bq_client = bq_client
         self.tolerance = tolerance or {"absolute": 0.01, "relative": 0.0001}
 
-        # 加载mapping sheets
+        # Load mapping sheets
         self._load_mapping_sheets()
 
     def _load_mapping_sheets(self):
-        """加载所有mapping sheets"""
+        """Load all mapping sheets"""
         print(f"Loading mapping from {self.mapping_file}...")
 
         self.column_mappings = pd.read_excel(
@@ -85,8 +85,8 @@ class MappingBasedValidator:
 
     def validate_source_schema(self) -> Dict:
         """
-        验证source tables的schema
-        检查所有mapping中引用的source columns是否存在
+        Validate schema of source tables
+        Check if all source columns referenced in mapping exist
         """
         print("\n[Layer 1] Validating source table schemas...")
         results = {
@@ -95,33 +95,33 @@ class MappingBasedValidator:
             "missing_columns": []
         }
 
-        # 为每个source table获取实际的schema
+        # Get actual schema for each source table
         for _, table_row in self.source_tables.iterrows():
             cte_name = table_row['cte_name']
             table_name = str(table_row['source_table']).strip('`')  # Remove backticks if present
 
             print(f"  Checking {cte_name}: {table_name}")
 
-            # 获取BigQuery表的schema
+            # Get BigQuery table schema
             try:
                 table = self.bq_client.get_table(table_name)
                 actual_columns = set([field.name for field in table.schema])
 
-                # 找出mapping中引用这个CTE的columns
+                # Find columns in mapping that reference this CTE
                 cte_mappings = self.column_mappings[
                     self.column_mappings['cte_name'] == cte_name
                 ]
 
-                # 解析source_expression中引用的列
+                # Parse columns referenced in source_expression
                 required_columns = set()
                 for _, mapping in cte_mappings.iterrows():
                     source_expr = mapping['source_expression']
                     if pd.notna(source_expr):
-                        # 提取source列名 (简化版，假设格式是 alias.column)
+                        # Extract source column names (simplified version, assumes format is alias.column)
                         cols = self._extract_source_columns(source_expr, cte_name)
                         required_columns.update(cols)
 
-                # 检查缺失的列
+                # Check for missing columns
                 missing = required_columns - actual_columns
 
                 results["tables"][cte_name] = {
@@ -154,12 +154,12 @@ class MappingBasedValidator:
 
     def _extract_source_columns(self, source_expr: str, cte_name: str) -> set:
         """
-        从source_expression中提取引用的列名
+        Extract column names referenced in source_expression
 
-        例如: "sbf.masthead" -> {"masthead"}
+        Example: "sbf.masthead" -> {"masthead"}
         """
-        # 这是一个简化版本，实际可能需要更复杂的SQL解析
-        # 根据source_tables找到对应的alias
+        # This is a simplified version, actual implementation may need more complex SQL parsing
+        # Find the corresponding alias from source_tables
         table_row = self.source_tables[
             self.source_tables['cte_name'] == cte_name
         ]
@@ -168,7 +168,7 @@ class MappingBasedValidator:
 
         alias = table_row.iloc[0]['table_alias']
 
-        # 提取 alias.column_name 模式
+        # Extract alias.column_name pattern
         import re
         pattern = rf'{alias}\.(\w+)'
         matches = re.findall(pattern, str(source_expr))
@@ -186,12 +186,12 @@ class MappingBasedValidator:
         sample_size: int = None
     ) -> List[ValidationResult]:
         """
-        验证CDL中的列值
+        Validate column values in CDL
 
         Args:
-            cdl_df: CDL DataFrame (从subscription_transaction_fct.xlsx加载)
-            filters: 过滤条件，例如 {"report_date": "2026-03-01"}
-            sample_size: 随机采样行数（用于快速测试）
+            cdl_df: CDL DataFrame (loaded from subscription_transaction_fct.xlsx)
+            filters: Filter conditions, e.g. {"report_date": "2026-03-01"}
+            sample_size: Random sample size (for quick testing)
 
         Returns:
             List of ValidationResult
@@ -200,7 +200,7 @@ class MappingBasedValidator:
 
         results = []
 
-        # 按transformation_type分组验证
+        # Validate by transformation_type group
         for trans_type in ['simple', 'medium', 'complex', 'aggregation', 'complex_aggregation']:
             subset = self.column_mappings[
                 self.column_mappings['transformation_type'] == trans_type
@@ -215,7 +215,7 @@ class MappingBasedValidator:
                 column_name = mapping['column_name']
                 cte_name = mapping['cte_name']
 
-                # 跳过中间CTE，只验证最终出现在CDL中的列
+                # Skip intermediate CTEs, only validate columns that appear in final CDL
                 if column_name not in cdl_df.columns:
                     continue
 
@@ -269,7 +269,7 @@ class MappingBasedValidator:
         filters: Dict = None
     ) -> ValidationResult:
         """
-        验证simple类型的列
+        Validate simple type columns
         Simple columns are direct mappings from source tables (e.g., sbf.masthead -> masthead)
 
         Full validation would require reconstructing joins and comparing with BigQuery source.
@@ -303,7 +303,7 @@ class MappingBasedValidator:
         filters: Dict = None
     ) -> ValidationResult:
         """
-        验证medium/complex类型的列
+        Validate medium/complex type columns
         These columns involve CASE WHEN logic or complex transformations.
 
         Examples:
@@ -339,7 +339,7 @@ class MappingBasedValidator:
         filters: Dict = None
     ) -> ValidationResult:
         """
-        验证aggregation/complex_aggregation类型的列
+        Validate aggregation/complex_aggregation type columns
         These are aggregated metrics from source (e.g., SUM, COUNT).
 
         Examples:
@@ -409,8 +409,8 @@ class MappingBasedValidator:
 
     def validate_derived_metrics(self, cdl_df: pd.DataFrame) -> List[ValidationResult]:
         """
-        验证派生指标
-        从CDL的base metrics重新计算，不需要回溯到source
+        Validate derived metrics
+        Recalculate from CDL's base metrics, no need to trace back to source
         """
         print("\n[Layer 5] Validating derived metrics...")
         results = []
@@ -455,9 +455,9 @@ class MappingBasedValidator:
         metric: pd.Series
     ) -> ValidationResult:
         """
-        验证单个派生指标
+        Validate single derived metric
 
-        例如: NetAcquisition = acquisition_count + free_to_paid - switch - reactivation
+        Example: NetAcquisition = acquisition_count + free_to_paid - switch - reactivation
         """
         metric_name = metric['metric_name']
         expression = metric['metric_expression']
@@ -518,7 +518,7 @@ class MappingBasedValidator:
                     error_message="Format validation passed - all values are in expected categories. Note: Full recalculation not possible (depends on intermediate CTE column 'subscription_tenure_days')"
                 )
 
-        # 检查依赖的metrics是否都在CDL中
+        # Check if all dependent metrics exist in CDL
         missing_deps = [dep.strip() for dep in depends_on if dep.strip() and dep.strip() not in cdl_df.columns]
 
         if missing_deps:
@@ -531,8 +531,8 @@ class MappingBasedValidator:
                 error_message=f"Missing dependencies in CDL: {missing_deps}"
             )
 
-        # 根据expression重新计算
-        # 这里需要解析expression，简化版使用eval（生产环境需要安全的表达式解析）
+        # Recalculate based on expression
+        # Needs expression parsing, simplified version uses eval (production needs safe expression parser)
         try:
             # Recalculate numeric derived metrics
             if metric_name == 'NetAcquisition':
@@ -564,11 +564,11 @@ class MappingBasedValidator:
                     error_message="Skipped - calculation logic not implemented"
                 )
 
-            # 对比计算值和CDL中的值（仅用于数值型metrics）
+            # Compare calculated value with value in CDL (for numeric metrics only)
             actual = cdl_df[metric_name]
             delta = abs(calculated - actual)
 
-            # 应用tolerance
+            # Apply tolerance
             abs_tol = self.tolerance['absolute']
             mismatches = delta > abs_tol
 
@@ -602,7 +602,7 @@ class MappingBasedValidator:
     # =========================================================================
 
     def _get_source_table(self, cte_name: str) -> str:
-        """获取CTE对应的source table"""
+        """Get source table for CTE"""
         table_row = self.source_tables[
             self.source_tables['cte_name'] == cte_name
         ]
@@ -611,12 +611,12 @@ class MappingBasedValidator:
         return str(table_row.iloc[0]['source_table']).strip('`')
 
     def generate_validation_report(self, results: List[ValidationResult]) -> Dict:
-        """生成验证报告摘要"""
+        """Generate validation report summary"""
         total = len(results)
         passed = sum(1 for r in results if r.passed)
         failed = total - passed
 
-        # 按transformation_type分组
+        # Group by transformation_type
         by_type = {}
         for result in results:
             trans_type = result.transformation_type
@@ -656,7 +656,7 @@ class MappingBasedValidator:
 if __name__ == "__main__":
     from google.cloud import bigquery
 
-    # 初始化
+    # Initialize
     bq_client = bigquery.Client(project="your-project")
     mapping_file = Path("../mapping.xlsx")
 
@@ -666,23 +666,23 @@ if __name__ == "__main__":
         tolerance={"absolute": 0.01, "relative": 0.0001}
     )
 
-    # Layer 1: Schema验证
+    # Layer 1: Schema validation
     schema_results = validator.validate_source_schema()
     print(f"\nSchema validation: {'PASSED' if schema_results['passed'] else 'FAILED'}")
 
-    # 加载CDL数据
+    # Load CDL data
     cdl_df = pd.read_excel("../subscription_transaction_fct.xlsx")
 
-    # Layer 2-4: 列值验证
+    # Layer 2-4: Column value validation
     column_results = validator.validate_columns(
         cdl_df,
-        filters={"report_date": "2026-03-01"}  # 只验证某一天
+        filters={"report_date": "2026-03-01"}  # Validate only one day
     )
 
-    # Layer 5: 派生指标验证
+    # Layer 5: Derived metrics validation
     derived_results = validator.validate_derived_metrics(cdl_df)
 
-    # 生成报告
+    # Generate report
     all_results = column_results + derived_results
     report = validator.generate_validation_report(all_results)
 
