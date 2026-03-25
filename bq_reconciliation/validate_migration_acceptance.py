@@ -14,13 +14,33 @@ Validation Method: Query result matching
 - Assert results are equal within tolerance
 """
 
-import argparse
 import sys
 import json
 from datetime import datetime
 from pathlib import Path
 
 from validators.table_comparison_validator import TableComparisonValidator
+
+
+def load_config(config_file: str = 'config.json') -> dict:
+    """
+    Load configuration from JSON file
+
+    Args:
+        config_file: Path to configuration file
+
+    Returns:
+        Configuration dictionary
+    """
+    try:
+        with open(config_file, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"Warning: Config file '{config_file}' not found. Using command-line arguments or defaults.")
+        return {}
+    except json.JSONDecodeError as e:
+        print(f"Warning: Invalid JSON in config file '{config_file}': {e}")
+        return {}
 
 
 class MigrationAcceptanceValidator:
@@ -31,12 +51,12 @@ class MigrationAcceptanceValidator:
 
     def __init__(
         self,
-        project_id: str = 'ncau-data-newsquery-sit',
-        cdl_table: str = 'ncau-data-newsquery-sit.cdl.subscription_transaction_fct',
-        prstn_table: str = 'ncau-data-newsquery-prd.prstn_consumer.subscription_base_movement_agg_snap',
+        project_id: str,
+        cdl_table: str,
+        prstn_table: str,
         credentials_path: str = None,
-        tolerance: float = 0.01,
-        queries_file: str = 'cdl_migration_acceptance_queries.json',
+        tolerance: float = None,
+        queries_file: str = None,
         date_filter_start: str = None,
         date_filter_end: str = None
     ):
@@ -349,80 +369,31 @@ class MigrationAcceptanceValidator:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='CDL Migration Acceptance Validation - Validate that CDL can replace PRSTN'
-    )
+    # Load configuration from file
+    config = load_config()
 
-    # Table paths
-    parser.add_argument(
-        '--cdl-table',
-        default='ncau-data-newsquery-sit.cdl.subscription_transaction_fct',
-        help='Full path to CDL table (the new layer)'
-    )
-
-    parser.add_argument(
-        '--prstn-table',
-        default='ncau-data-newsquery-prd.prstn_consumer.subscription_base_movement_agg_snap',
-        help='Full path to PRSTN table (the layer being replaced)'
-    )
-
-    # BigQuery options
-    parser.add_argument(
-        '--project',
-        default='ncau-data-newsquery-sit',
-        help='GCP project ID'
-    )
-
-    parser.add_argument(
-        '--credentials',
-        help='Path to GCP service account JSON key file (uses ADC if not provided)'
-    )
-
-    # Validation options
-    parser.add_argument(
-        '--tolerance',
-        type=float,
-        default=0.01,
-        help='Numeric tolerance for comparisons (default: 0.01)'
-    )
-
-    parser.add_argument(
-        '--queries-file',
-        default='cdl_migration_acceptance_queries.json',
-        help='Path to business validation queries JSON file'
-    )
-
-    # Date filtering options
-    parser.add_argument(
-        '--date-start',
-        help='Start date for partition filtering (YYYY-MM-DD). Use for faster testing on subset of data.'
-    )
-
-    parser.add_argument(
-        '--date-end',
-        help='End date for partition filtering (YYYY-MM-DD). Use for faster testing on subset of data.'
-    )
-
-    # Output
-    parser.add_argument(
-        '--output',
-        default='cdl_migration_acceptance_report',
-        help='Output report file prefix'
-    )
-
-    args = parser.parse_args()
+    # Validate required parameters
+    if not config.get('project_id'):
+        print("❌ ERROR: 'project_id' is required in config.json")
+        return 1
+    if not config.get('cdl_table'):
+        print("❌ ERROR: 'cdl_table' is required in config.json")
+        return 1
+    if not config.get('prstn_table'):
+        print("❌ ERROR: 'prstn_table' is required in config.json")
+        return 1
 
     # Initialize validator
     try:
         validator = MigrationAcceptanceValidator(
-            project_id=args.project,
-            cdl_table=args.cdl_table,
-            prstn_table=args.prstn_table,
-            credentials_path=args.credentials,
-            tolerance=args.tolerance,
-            queries_file=args.queries_file,
-            date_filter_start=args.date_start,
-            date_filter_end=args.date_end
+            project_id=config['project_id'],
+            cdl_table=config['cdl_table'],
+            prstn_table=config['prstn_table'],
+            credentials_path=config.get('credentials_path'),
+            tolerance=config.get('tolerance', 0.01),
+            queries_file=config.get('queries_file', 'cdl_migration_acceptance_queries.json'),
+            date_filter_start=config.get('date_filter_start'),
+            date_filter_end=config.get('date_filter_end')
         )
     except Exception as e:
         print(f"\n❌ Failed to initialize validator: {e}")
@@ -441,7 +412,8 @@ def main():
 
     # Generate acceptance report
     try:
-        validator.generate_acceptance_report(acceptance, args.output)
+        output_file = config.get('output_file', 'cdl_migration_acceptance_report')
+        validator.generate_acceptance_report(acceptance, output_file)
     except Exception as e:
         print(f"\n❌ Failed to generate report: {e}")
         import traceback

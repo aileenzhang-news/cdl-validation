@@ -1,0 +1,11 @@
+{
+  "project_id": "ncau-data-newsquery-sit",
+  "cdl_table": "ncau-data-newsquery-sit.cdl.subscription_transaction_fct",
+  "prstn_table": "ncau-data-newsquery-prd.prstn_consumer.subscription_base_movement_agg_snap",
+  "credentials_path": null,
+  "tolerance": 0.01,
+  "queries_file": "cdl_migration_acceptance_queries.json",
+  "date_filter_start": null,
+  "date_filter_end": null,
+  "output_file": "cdl_migration_acceptance_report"
+}
