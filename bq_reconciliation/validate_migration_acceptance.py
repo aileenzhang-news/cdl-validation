@@ -18,6 +18,7 @@ import sys
 import json
 from datetime import datetime
 from pathlib import Path
+import pandas as pd
 
 from validators.table_comparison_validator import TableComparisonValidator
 
@@ -322,7 +323,36 @@ class MigrationAcceptanceValidator:
 
         # Save detailed report if output file specified
         if output_file:
-            # Save JSON report
+            # Prepare data for Excel export
+            excel_rows = []
+
+            for result in acceptance['query_results']:
+                row = {
+                    'CDL table': acceptance['cdl_table'],
+                    'PRSTN table': acceptance['prstn_table'],
+                    'Metrics': result.check_name,
+                    'CDL Value': result.details.get('cdl_value', ''),
+                    'PRSTN Value': result.details.get('target_value', ''),
+                    'Variance': result.details.get('delta', ''),
+                    'Result': 'PASS' if result.passed else 'FAIL'
+                }
+
+                # Handle error cases where values might not be available
+                if not result.passed and result.error_message:
+                    row['CDL Value'] = result.error_message
+                    row['PRSTN Value'] = ''
+                    row['Variance'] = ''
+
+                excel_rows.append(row)
+
+            # Create DataFrame and save to Excel
+            df = pd.DataFrame(excel_rows)
+            excel_file = f"{output_file}.xlsx"
+            df.to_excel(excel_file, index=False, sheet_name='Results')
+
+            print(f"\n✅ Detailed report saved to: {excel_file}")
+
+            # Also save JSON report for backward compatibility
             json_file = f"{output_file}.json"
             report_data = {
                 'migration_accepted': acceptance['migration_accepted'],
@@ -354,7 +384,7 @@ class MigrationAcceptanceValidator:
             with open(json_file, 'w') as f:
                 json.dump(report_data, f, indent=2, default=str)
 
-            print(f"\n✅ Detailed report saved to: {json_file}")
+            print(f"✅ JSON report saved to: {json_file}")
 
         print(f"\n{'='*80}")
 
